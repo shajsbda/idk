@@ -39,8 +39,10 @@ sudo service danted restart
 if sudo service danted status | grep -q "running"; then
     # Получаем IP-адрес
     IP=$(hostname -I | awk '{print $1}')
+    EXTERNAL_IP=$(curl -s ifconfig.me)
     PORT=1080
-    echo "Прокси запущен на ${IP}:${PORT}"
+    
+    echo "Прокси запущен на ${EXTERNAL_IP}:${PORT}"
 else
     echo "Ошибка запуска dante-server. Проверка лога..."
     sudo tail -n 20 /var/log/danted.log
