@@ -19,7 +19,7 @@ cat <<EOF | sudo tee /etc/danted.conf > /dev/null
 logoutput: /var/log/danted.log
 internal: 0.0.0.0 port = 1080
 external: $INTERFACE
-method: username
+method: none
 user.notprivileged: nobody
 client pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
