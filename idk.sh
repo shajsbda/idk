@@ -40,6 +40,7 @@ socks block {
         from: 0.0.0.0/0 to: 0.0.0.0/0
         log: connect error
 }
+EOF
 
 # Запуск danted с помощью команды service
 echo "Запуск dante-server..."
