@@ -6,21 +6,20 @@ if ! command -v danted &> /dev/null; then
     sudo apt update && sudo apt install -y dante-server
 fi
 
-# Определяем интерфейс для конфигурации
-INTERFACE=$(ip -o -4 route show to default | awk '{print $5}')
-
-if [ -z "$INTERFACE" ]; then
-    echo "Не удалось определить сетевой интерфейс. Пожалуйста, укажите его вручную в конфигурации."
+# Проверяем, существует ли интерфейс
+INTERFACE="eth0"  # Замените на нужный интерфейс, если имя другое
+if ! ip a | grep -q "$INTERFACE"; then
+    echo "Интерфейс $INTERFACE не найден. Пожалуйста, проверьте его название."
     exit 1
 fi
 
 # Настраиваем конфигурацию danted
 echo "Настройка конфигурации dante-server..."
 cat <<EOF | sudo tee /etc/danted.conf > /dev/null
-logoutput: stderr
+logoutput: /var/log/danted.log
 internal: 0.0.0.0 port = 1080
 external: $INTERFACE
-method: username none
+method: username
 user.notprivileged: nobody
 client pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
@@ -32,17 +31,17 @@ socks pass {
 }
 EOF
 
-# Перезапускаем службу danted
+# Запуск danted с помощью команды service
 echo "Запуск dante-server..."
-sudo systemctl restart danted
+sudo service danted restart
 
-# Проверяем, успешно ли запущена служба
-if systemctl is-active --quiet danted; then
+# Проверка статуса службы
+if sudo service danted status | grep -q "running"; then
+    # Получаем IP-адрес
     IP=$(hostname -I | awk '{print $1}')
     PORT=1080
     echo "Прокси запущен на ${IP}:${PORT}"
 else
-    echo "Не удалось запустить dante-server. Проверьте конфигурацию и логи для диагностики."
-    echo "Просмотр журнала ошибок:"
-    sudo journalctl -u danted --no-pager | tail -n 20
+    echo "Ошибка запуска dante-server. Проверка лога..."
+    sudo tail -n 20 /var/log/danted.log
 fi
