@@ -16,20 +16,30 @@ fi
 # Настраиваем конфигурацию danted
 echo "Настройка конфигурации dante-server..."
 cat <<EOF | sudo tee /etc/danted.conf > /dev/null
-logoutput: /var/log/danted.log
-internal: 0.0.0.0 port = 1080
-external: $INTERFACE
+logoutput: /var/log/dante.log
+internal: eth0 port = 1080
+external: eth0
+clientmethod: none
 socksmethod: none
+user.privileged: root
 user.notprivileged: nobody
+
 client pass {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: error
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: error connect disconnect
+}
+client block {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: connect error
 }
 socks pass {
-    from: 0.0.0.0/0 to: 0.0.0.0/0
-    log: error
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: error connect disconnect
 }
-EOF
+socks block {
+        from: 0.0.0.0/0 to: 0.0.0.0/0
+        log: connect error
+}
 
 # Запуск danted с помощью команды service
 echo "Запуск dante-server..."
