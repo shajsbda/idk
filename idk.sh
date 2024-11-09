@@ -26,7 +26,7 @@ EOF
 
 # Перезапускаем службу danted
 echo "Запуск dante-server..."
-sudo systemctl restart danted
+sudo service restart danted
 
 # Получаем IP-адрес
 IP=$(hostname -I | awk '{print $1}')
