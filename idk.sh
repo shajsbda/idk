@@ -1,60 +1,28 @@
 #!/bin/bash
 
-# Устанавливаем dante-server, если он не установлен
-if ! command -v danted &> /dev/null; then
-    echo "Устанавливаем dante-server..."
-    sudo apt update && sudo apt install -y dante-server
+# Установка Squid, если он еще не установлен
+if ! command -v squid &> /dev/null; then
+    echo "Устанавливаем Squid..."
+    sudo apt update && sudo apt install -y squid
 fi
 
-# Проверяем, существует ли интерфейс
-INTERFACE="eth0"  # Замените на нужный интерфейс, если имя другое
-if ! ip a | grep -q "$INTERFACE"; then
-    echo "Интерфейс $INTERFACE не найден. Пожалуйста, проверьте его название."
-    exit 1
-fi
-
-# Настраиваем конфигурацию danted
-echo "Настройка конфигурации dante-server..."
-cat <<EOF | sudo tee /etc/danted.conf > /dev/null
-logoutput: /var/log/dante.log
-internal: eth0 port = 1080
-external: eth0
-clientmethod: none
-socksmethod: none
-user.privileged: root
-user.notprivileged: nobody
-
-client pass {
-        from: 0.0.0.0/0 to: 0.0.0.0/0
-        log: error connect disconnect
-}
-client block {
-        from: 0.0.0.0/0 to: 0.0.0.0/0
-        log: connect error
-}
-socks pass {
-        from: 0.0.0.0/0 to: 0.0.0.0/0
-        log: error connect disconnect
-}
-socks block {
-        from: 0.0.0.0/0 to: 0.0.0.0/0
-        log: connect error
-}
+# Настройка конфигурации Squid
+echo "Настройка конфигурации Squid..."
+sudo tee /etc/squid/squid.conf > /dev/null <<EOF
+http_port 3128
+acl all src all
+http_access allow all
 EOF
 
-# Запуск danted с помощью команды service
-echo "Запуск dante-server..."
-sudo service danted restart
+# Перезапуск Squid для применения настроек
+echo "Перезапуск Squid..."
+sudo service squid restart
 
-# Проверка статуса службы
-if sudo service danted status | grep -q "running"; then
-    # Получаем IP-адрес
-    IP=$(hostname -I | awk '{print $1}')
-    EXTERNAL_IP=$(curl -s ifconfig.me)
-    PORT=1080
-    
-    echo "Прокси запущен на ${EXTERNAL_IP}:${PORT}"
-else
-    echo "Ошибка запуска dante-server. Проверка лога..."
-    sudo tail -n 20 /var/log/danted.log
-fi
+# Открытие порта 3128 в брандмауэре
+echo "Настройка брандмауэра для разрешения доступа к порту 3128..."
+sudo ufw allow 3128
+
+# Получение IP-адреса и вывод информации о прокси
+IP=$(hostname -I | awk '{print $1}')
+PORT=3128
+echo "HTTP-прокси успешно запущен на ${IP}:${PORT}"
