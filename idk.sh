@@ -1,28 +1,32 @@
 #!/bin/bash
 
-# Установка Squid, если он еще не установлен
-if ! command -v squid &> /dev/null; then
-    echo "Устанавливаем Squid..."
-    sudo apt update && sudo apt install -y squid
-fi
+sudo apt update
 
-# Настройка конфигурации Squid
-echo "Настройка конфигурации Squid..."
-sudo tee /etc/squid/squid.conf > /dev/null <<EOF
-http_port 3128
-acl all src all
-http_access allow all
+echo "Installing Dante SOCKS5 proxy server"
+sudo apt install -y dante-server
+
+echo "Configuring Dante"
+cat <<EOF | sudo tee /etc/danted.conf > /dev/null
+logoutput: stderr
+internal: 0.0.0.0 port = 1080
+external: eth0  # Используйте eth0 или нужный интерфейс
+socksmethod: none    # Отключение аутентификации для упрощения
+user.notprivileged: nobody
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error
+}
+socks pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: error
+}
 EOF
 
-# Перезапуск Squid для применения настроек
-echo "Перезапуск Squid..."
-sudo service squid restart
+echo "Starting Dante SOCKS5 proxy server"
+sudo service danted restart
 
-# Открытие порта 3128 в брандмауэре
-echo "Настройка брандмауэра для разрешения доступа к порту 3128..."
-sudo ufw allow 3128
-
-# Получение IP-адреса и вывод информации о прокси
-IP=$(hostname -I | awk '{print $1}')
-PORT=3128
-echo "HTTP-прокси успешно запущен на ${IP}:${PORT}"
+curl -SsL https://playit-cloud.github.io/ppa/key.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://playit-cloud.github.io/ppa/data ./" | sudo tee /etc/apt/sources.list.d/playit-cloud.list
+sudo apt update
+sudo apt install -y playit
+playit
